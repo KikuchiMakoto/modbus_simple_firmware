@@ -27,7 +27,7 @@ jobs:
           arduino-cli lib install "HX711" "ADS1115_WE" "DFRobot_GP8403" "ModbusRTUSlave"
 
       - name: Compile firmware
-        run: arduino-cli compile -b arduino:renesas_uno:unor4nano --output-dir ./build .
+        run: arduino-cli compile -b arduino:renesas_uno:nanor4 --output-dir ./build .
 
       - name: Set release tag
         id: vars
