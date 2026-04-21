@@ -24,10 +24,74 @@ jobs:
         run: |
           arduino-cli core update-index
           arduino-cli core install arduino:renesas_uno
+          arduino-cli core install arduino:avr
           arduino-cli lib install "HX711" "ADS1115_WE" "DFRobot_GP8403" "ModbusRTUSlave"
 
-      - name: Compile firmware
-        run: arduino-cli compile -b arduino:renesas_uno:nanor4 --output-dir ./build .
+      - name: Compile firmware (Arduino Nano R4 and Arduino Nano)
+        run: |
+          set -euo pipefail
+
+          mkdir -p ./build/ArduinoNanoR4 ./build/ArduinoNano
+
+          arduino-cli compile -b arduino:renesas_uno:nanor4 --output-dir ./build/ArduinoNanoR4 .
+          arduino-cli compile -b arduino:avr:nano --output-dir ./build/ArduinoNano .
+
+          copy_first_match() {
+            local src_dir="$1"
+            local pattern="$2"
+            local dst="$3"
+            local src
+            src="$(find "$src_dir" -type f -name "$pattern" | head -n 1 || true)"
+            if [ -n "$src" ]; then
+              cp "$src" "$dst"
+            else
+              echo "No match found for pattern '$pattern' in '$src_dir'"
+            fi
+          }
+
+          copy_first_match "./build/ArduinoNanoR4" "*.bin" "./build/ArduinoNanoR4.bin"
+          copy_first_match "./build/ArduinoNanoR4" "*.elf" "./build/ArduinoNanoR4.elf"
+          copy_first_match "./build/ArduinoNanoR4" "*.hex" "./build/ArduinoNanoR4.hex"
+
+          copy_first_match "./build/ArduinoNano" "*.bin" "./build/ArduinoNano.bin"
+          copy_first_match "./build/ArduinoNano" "*.elf" "./build/ArduinoNano.elf"
+          copy_first_match "./build/ArduinoNano" "*.hex" "./build/ArduinoNano.hex"
+
+          if [ ! -f "./build/ArduinoNano.bin" ] && [ -f "./build/ArduinoNano.elf" ]; then
+            AVR_OBJCOPY="$(command -v avr-objcopy || true)"
+            if [ -z "$AVR_OBJCOPY" ]; then
+              AVR_OBJCOPY="$(find "$HOME/.arduino15/packages/arduino/tools/avr-gcc" -maxdepth 8 -type f -name avr-objcopy 2>/dev/null | sort -V | tail -n 1 || true)"
+            fi
+            if [ -n "$AVR_OBJCOPY" ]; then
+              "$AVR_OBJCOPY" -O binary "./build/ArduinoNano.elf" "./build/ArduinoNano.bin"
+            fi
+          fi
+
+          if [ ! -f "./build/ArduinoNanoR4.bin" ] && [ -f "./build/ArduinoNanoR4.elf" ]; then
+            ARM_OBJCOPY="$(command -v arm-none-eabi-objcopy || true)"
+            if [ -z "$ARM_OBJCOPY" ]; then
+              ARM_OBJCOPY="$(find "$HOME/.arduino15/packages/arduino" "$HOME/.arduino15/packages/renesas" -maxdepth 8 -type f -name arm-none-eabi-objcopy 2>/dev/null | sort -V | tail -n 1 || true)"
+            fi
+            if [ -n "$ARM_OBJCOPY" ]; then
+              "$ARM_OBJCOPY" -O binary "./build/ArduinoNanoR4.elf" "./build/ArduinoNanoR4.bin"
+            fi
+          fi
+
+          required=(
+            "./build/ArduinoNanoR4.bin"
+            "./build/ArduinoNanoR4.elf"
+            "./build/ArduinoNanoR4.hex"
+            "./build/ArduinoNano.bin"
+            "./build/ArduinoNano.elf"
+            "./build/ArduinoNano.hex"
+          )
+
+          for artifact in "${required[@]}"; do
+            if [ ! -f "$artifact" ]; then
+              echo "Missing required artifact: $artifact"
+              exit 1
+            fi
+          done
 
       - name: Set release tag
         id: vars
@@ -38,17 +102,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.vars.outputs.tag }}
         run: |
-          artifacts=()
-          for artifact in build/*.bin build/*.hex build/*.elf; do
-            if [ -e "$artifact" ]; then
-              artifacts+=("$artifact")
-            fi
-          done
-
-          if [ "${#artifacts[@]}" -eq 0 ]; then
-            echo "No firmware artifacts (.bin/.hex/.elf) found in ./build"
-            exit 1
-          fi
+          artifacts=(
+            build/ArduinoNanoR4.bin
+            build/ArduinoNanoR4.elf
+            build/ArduinoNanoR4.hex
+            build/ArduinoNano.bin
+            build/ArduinoNano.elf
+            build/ArduinoNano.hex
+          )
 
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" \
