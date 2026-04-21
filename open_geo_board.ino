@@ -82,8 +82,11 @@ void loop() {
   for (uint8_t i = 0; i < HX711_NUM; i++) {
     if (hx711[i].is_ready()) inputReg[i] = (int16_t)(hx711[i].read() >> 8);
   }
+  
+  // 2. ModbusRTU Task
+  modbus.poll();
 
-  // 2. ADS1115 Task: IC0のreadyを待って両ICを読み込み、次のchへ変換開始
+  // 3. ADS1115 Task: IC0のreadyを待って両ICを読み込み、次のchへ変換開始
   if (!ads1115[0].isBusy()) {
     inputReg[HX711_NUM + ads_current_channel] = ads1115[0].getRawResult();
     inputReg[HX711_NUM + 4 + ads_current_channel] = ads1115[1].getRawResult();
@@ -108,12 +111,15 @@ void loop() {
     ads1115[1].startSingleMeasurement();
   }
 
-  // 3. ModbusRTU Task
+  // 4. ModbusRTU Task
   modbus.poll();
 
-  // 4. GP8403 Task: 1 loopで1chだけ更新
+  // 5. GP8403 Task: 1 loopで1chだけ更新
   {
     gp8403[(uint8_t)(gp_current_ch / 2)].setDACOutVoltage(holdReg[gp_current_ch], (uint8_t)(gp_current_ch % 2));
     if (++gp_current_ch >= GP8403_NUM * 2) gp_current_ch = 0;
   }
+
+  // 6. ModbusRTU Task
+  modbus.poll();
 }
