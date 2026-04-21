@@ -80,7 +80,7 @@ void setup() {
 void loop() {
   // 1. HX711 Task: 全ICのready確認、readyならread
   for (uint8_t i = 0; i < HX711_NUM; i++) {
-    if (hx711[i].is_ready()) inputReg[i] = (int16_t)(hx711[i].read() >> 8);
+    if (hx711[i].is_ready()) inputReg[i] = (int16_t)(((long)hx711[i].read()) >> 8);
   }
   
   // 2. ModbusRTU Task
