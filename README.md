@@ -1,8 +1,6 @@
 # ModbusSimpleFirmware
 
-Arduino Uno/Nano R4 用の AD/DA ボード firmware
-
-**⚠️ このプロジェクトは WIP (作業中) です。**
+Arduino Nano R4 用の AD/DA ボード firmware
 
 ## 対応ボード
 
@@ -56,7 +54,7 @@ Arduino Uno/Nano R4 用の AD/DA ボード firmware
    - ADS1115_WE
    - DFRobot_GP8403
    - ModbusRTUSlave
-2. ボード: Arduino Uno/Nano R4
+2. ボード: Arduino Nano R4
 3. ビルド・アップロード
 
 ## License
