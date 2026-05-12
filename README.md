@@ -4,7 +4,7 @@ Arduino Nano R4 用の AD/DA ボード firmware
 
 ## 対応ボード
 
-- Arduino Uno/Nano R4
+- Arduino Nano R4
 
 ## 使用ライブラリ
 
